@@ -56,11 +56,11 @@ class BaseTrainer(ABC):
                 bf16=self.config.use_bf16,
                 warmup_ratio=self.config.WARMUP_RATIO,
                 lr_scheduler_type=self.config.LR_SCHEDULER_TYPE,
-                save_strategy=self.config.SAVE_STRATERGY,
+                save_strategy=self.config.SAVE_STRATEGY,
                 save_steps=self.config.SAVE_STEPS,
-                load_best_model_at_end=self.config.LOAD_BEST_MODEL_AT_END,
-                evaluation_strategy=self.config.SAVE_STRATEGY,
-                eval_steps=self.config.EVAL_STEPS,
+                # load_best_model_at_end=self.config.LOAD_BEST_MODEL_AT_END,
+                # evaluation_strategy=self.config.SAVE_STRATEGY,
+                # eval_steps=self.config.EVAL_STEPS,
                 dataloader_pin_memory=True,
                 dataloader_num_workers=4,
                 logging_steps=self.config.LOGGING_STEPS,
@@ -80,18 +80,19 @@ class BaseTrainer(ABC):
                 bf16=self.config.use_bf16,
                 warmup_ratio=self.config.WARMUP_RATIO,
                 lr_scheduler_type=self.config.LR_SCHEDULER_TYPE,
-                save_strategy=self.config.SAVE_STRATERGY,
+                save_strategy=self.config.SAVE_STRATEGY,
                 save_steps=self.config.SAVE_STEPS,
-                load_best_model_at_end=self.config.LOAD_BEST_MODEL_AT_END,
-                evaluation_strategy=self.config.SAVE_STRATEGY,
-                eval_steps=self.config.EVAL_STEPS,
+                # load_best_model_at_end=self.config.LOAD_BEST_MODEL_AT_END,
+                # evaluation_strategy=self.config.SAVE_STRATEGY,
+                # eval_steps=self.config.EVAL_STEPS,
                 dataloader_pin_memory=True,
                 dataloader_num_workers=4,
                 logging_steps=self.config.LOGGING_STEPS
             )
 
-        train_dataset, test_dataset = DatasetLoader(self.config.DATASET_PATH, self.config.USE_HF).get_dataset()
-
+        train_dataset, test_dataset = DatasetLoader(self.config.DATASET_PATH, self.config.USE_HF, tokenizer).get_dataset()
+        logger.debug(train_dataset[0])
+        
         trainer = SFTTrainer(
             model=model,
             tokenizer=tokenizer,
@@ -103,7 +104,8 @@ class BaseTrainer(ABC):
 
             args=training_arguments,
             max_seq_length=self.config.MAX_SEQ_LENGTH,
-            packing=self.config.PACKING
+            packing=self.config.PACKING,
+            neftune_noise_alpha=5.0
         )
 
         self._calculate_steps(train_dataset)
@@ -155,7 +157,7 @@ class BaseTrainer(ABC):
         :return: AutoTokenizer
         """
         tokenizer = AutoTokenizer.from_pretrained(
-            model=model,
+            model,
             use_fast=True,
             trust_remote=True
         )
@@ -164,7 +166,6 @@ class BaseTrainer(ABC):
 
         return tokenizer
 
-    @abstractmethod
     def peft_model(self, model):
         peft_config = LoraConfig(
             r=self.config.LORA_R,
@@ -176,7 +177,7 @@ class BaseTrainer(ABC):
             use_dora=self.config.USE_DORA
         )
         model = get_peft_model(model, peft_config)
-        self._get_model_trainable_parameters()
+        self._get_model_trainable_parameters(model)
         return model, peft_config
 
     def _model_loading_checks(self, model):

@@ -1,17 +1,17 @@
 # Model configuation
-BASE_MODEL: "mistralai/Mistral-7B-v0.1"
+BASE_MODEL: "NousResearch/Meta-Llama-3-8B-Instruct"
 NEW_MODEL: "test_1"
 
 # Data configuation
-DATASET_PATH: "SAGI-1/reasoningData_500k"
-USE_HUGGINGFACE_DATASETS: True
+DATASET_PATH: "chats-bug/email_subject_gen"
+USE_HF: True
 
 
 # LoRA Configurations
 USE_LORA: True
-USE_DORA: False
+USE_DORA: True
 LORA_R: 8
-LORA_ALPHA: 16
+LORA_ALPHA: 32
 LORA_DROPOUT: 0.1
 LORA_BIAS: "none"
 LORA_TASK_TYPE: "CAUSAL_LM"
@@ -37,12 +37,12 @@ PACKING: True
 MAX_SEQ_LENGTH: 1024
 
 # Model saving strategy
-SAVE_STRATERGY: "steps"
-SAVE_STEPS: 500
+SAVE_STRATEGY: "steps"
+SAVE_STEPS: 10
 SAVE_TOTAL_LIMIT: 5
 LOAD_BEST_MODEL_AT_END: True
 
 # Wandb logging
-USE_WANDB: True
+USE_WANDB: False
 REPORT_TO: "wandb"
 LOGGING_STEPS: 1
