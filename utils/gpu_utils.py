@@ -1,6 +1,6 @@
 import torch
 
-from lib.logger import Logger
+from customlogger.logger import (Logger)
 
 logger = Logger(__name__)
 def clear_gpu_cache(arr: list, clear_cache: bool = True):

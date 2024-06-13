@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from datasets import load_dataset
 
-from lib.logger import Logger
+from customlogger.logger import Logger
 
 logger = Logger(__name__)
 

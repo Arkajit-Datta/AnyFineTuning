@@ -33,7 +33,7 @@ LR_SCHEDULER_TYPE: "cosine"
 MAX_GRAD_NORM: 1 # Clip gradients after the value
 WARMUP_RATIO: 0.1 # The lr takes 3% steps to reach stability
 
-PACKING: True
+PACKING: False
 MAX_SEQ_LENGTH: 1024
 
 # Model saving strategy

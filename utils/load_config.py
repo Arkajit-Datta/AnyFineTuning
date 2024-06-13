@@ -1,6 +1,6 @@
 import yaml
 
-from lib.logger import Logger
+from customlogger.logger import Logger
 
 logger = Logger(__name__)
 class Config:

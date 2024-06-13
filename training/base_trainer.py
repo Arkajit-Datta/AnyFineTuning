@@ -16,7 +16,7 @@ from datetime import datetime
 from accelerate import Accelerator
 from abc import ABC, abstractmethod
 
-from lib.logger import Logger
+from customlogger.logger import Logger
 from utils.load_config import Config
 from utils.data_utils import DatasetLoader
 
