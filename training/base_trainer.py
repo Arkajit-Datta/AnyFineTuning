@@ -68,7 +68,7 @@ class BaseTrainer(ABC):
             )
         else:
             training_arguments = TrainingArguments(
-                output_dir=ouput_dir,
+                output_dir=output_dir,
                 learning_rate=self.config.LEARNING_RATE,
                 num_train_epochs=self.config.NUM_EPOCHS,
                 per_device_train_batch_size=self.config.BATCH_SIZE,
@@ -90,13 +90,15 @@ class BaseTrainer(ABC):
                 logging_steps=self.config.LOGGING_STEPS
             )
 
+        train_dataset, test_dataset = DatasetLoader(self.config.DATASET_PATH, self.config.USE_HF).get_dataset()
+
         trainer = SFTTrainer(
             model=model,
             tokenizer=tokenizer,
             peft_config=peft_config,
 
-            train_dataset=self.train_dataset,
-            eval_dataset=self.test_dataset,
+            train_dataset=train_dataset,
+            eval_dataset=test_dataset,
             dataset_text_field="text",
 
             args=training_arguments,
@@ -104,8 +106,11 @@ class BaseTrainer(ABC):
             packing=self.config.PACKING
         )
 
-        return trainer
-    def get_bnb_config():
+        self._calculate_steps(train_dataset)
+
+        return trainer, self.config.NEW_MODEL
+
+    def get_bnb_config(self):
         """
         Get the BitsAndBytesConfig
 
@@ -245,108 +250,15 @@ class BaseTrainer(ABC):
         Using DateTime to create a directory to store the run logs
         :return:
         """
-        dirname = f"checkpoints/run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}
+        dirname = f"checkpoints/run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
         os.makedirs(dirname)
         return dirname
 
-dataset_loader = DatasetLoader(DATASET_NAME)
-train_dataset, test_dataset = dataset_loader.get_dataset()
+    def _calculate_steps(self, train_dataset):
+        dataset_size = len(train_dataset)
+        steps_per_epoch = dataset_size / (self.config.BATCH_SIZE * self.config.GRAD_ACCUMULATION_STEPS)
+        total_steps = steps_per_epoch * self.config.NUM_EPOCHS
 
-# Training arguments
-OUTPUT_DIR = config["OUTPUT_DIR"]
-LEARNING_RATE = config["LEARNING_RATE"]
-
-NUM_EPOCHS = config["NUM_EPOCHS"]
-BATCH_SIZE = config["BATCH_SIZE"]
-# effective backprop @ batch_size*grad_accum_steps
-GRAD_ACCUMULATION_STEPS = config["GRAD_ACCUMULATION_STEPS"]
-# speed down by ~20%, improves mem. efficiency
-GRADIENT_CHECKPOINTING = config["GRADIENT_CHECKPOINTING"]
-
-OPTIMIZER = config["OPTIMIZER"]
-# OPTIMIZER = "AdamW"
-# OPTIMIZER = "adamw_torch_fused" # use with pytorch compile
-WEIGHT_DECAY = config["WEIGHT_DECAY"]
-# examples include ["linear", "cosine", "constant"]
-LR_SCHEDULER_TYPE = config["LR_SCHEDULER_TYPE"]
-MAX_GRAD_NORM = config["MAX_GRAD_NORM"]  # clip the gradients after the value
-# The lr takes 3% steps to reach stability
-WARMUP_RATIO = config["WARMUP_RATIO"]
-
-SAVE_STRATERGY = config["SAVE_STRATERGY"]
-SAVE_STEPS = config["SAVE_STEPS"]
-SAVE_TOTAL_LIMIT = config["SAVE_TOTAL_LIMIT"]
-LOAD_BEST_MODEL_AT_END = config["LOAD_BEST_MODEL_AT_END"]
-
-REPORT_TO = config["REPORT_TO"]
-LOGGING_STEPS = config["LOGGING_STEPS"]
-EVAL_STEPS = SAVE_STEPS
-
-PACKING = config["PACKING"]
-MAX_SEQ_LENGTH = config["MAX_SEQ_LENGTH"]
+        logger.info(f"Total number of steps: {total_steps}")
 
 
-def calculate_steps():
-    dataset_size = len(train_dataset)
-    steps_per_epoch = dataset_size / (BATCH_SIZE * GRAD_ACCUMULATION_STEPS)
-    total_steps = steps_per_epoch * NUM_EPOCHS
-
-    print(f"Total number of steps: {total_steps}")
-
-
-calculate_steps()
-
-training_arguments = TrainingArguments(
-    output_dir=OUTPUT_DIR,
-    learning_rate=LEARNING_RATE,
-    num_train_epochs=NUM_EPOCHS,
-    per_device_train_batch_size=BATCH_SIZE,
-    gradient_accumulation_steps=GRAD_ACCUMULATION_STEPS,
-    gradient_checkpointing=GRADIENT_CHECKPOINTING,
-
-    optim=OPTIMIZER,
-    weight_decay=WEIGHT_DECAY,
-    max_grad_norm=MAX_GRAD_NORM,
-    fp16=not use_bf16,
-    bf16=use_bf16,
-    warmup_ratio=WARMUP_RATIO,
-    lr_scheduler_type=LR_SCHEDULER_TYPE,
-
-    # torch_compile=False,
-    group_by_length=False,
-
-    save_strategy=SAVE_STRATERGY,
-    save_steps=SAVE_STEPS,
-    # save_total_limit=SAVE_TOTAL_LIMIT,
-    load_best_model_at_end=LOAD_BEST_MODEL_AT_END,
-
-    evaluation_strategy=SAVE_STRATERGY,
-    eval_steps=EVAL_STEPS,
-
-    dataloader_pin_memory=True,
-    dataloader_num_workers=4,
-
-    logging_steps=LOGGING_STEPS,
-    report_to=REPORT_TO,
-)
-
-# Define the Supervised-Finetuning-Trainer from huggingface
-trainer = SFTTrainer(
-    model=model,
-    tokenizer=tokenizer,
-    peft_config=peft_config,
-
-    train_dataset=train_dataset,
-    eval_dataset=test_dataset,
-    dataset_text_field="text",
-
-    args=training_arguments,
-    max_seq_length=MAX_SEQ_LENGTH,
-    packing=PACKING,
-)
-
-# Train model from scratch
-trainer.train()
-
-# Save the model
-trainer.model.save_pretrained(NEW_MODEL)
